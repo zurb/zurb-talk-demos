@@ -1,0 +1,1 @@
+var LIBRARY = {a: 'b'};
