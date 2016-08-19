@@ -1,65 +1,139 @@
-# ZURB Template
+# Panini Talk Demo
 
-[![devDependency Status](https://david-dm.org/zurb/foundation-zurb-template/dev-status.svg)](https://david-dm.org/zurb/foundation-zurb-template#info=devDependencies)
+A basic demo of Panini for a ZURB Foundation meetup.  Below is some info about Panini from the [Panini Repository](https://github.com/zurb/panini)
 
-**Please open all issues with this template on the main [Foundation for Sites](https://github.com/zurb/foundation-sites/issues) repo.**
 
-This is the official ZURB Template for use with [Foundation for Sites](http://foundation.zurb.com/sites). We use this template at ZURB to deliver static code to our clients. It has a Gulp-powered build system with these features:
+# Panini
 
-- Handlebars HTML templates with Panini
-- Sass compilation and prefixing
-- JavaScript concatenation
-- Built-in BrowserSync server
-- For production builds:
-  - CSS compression
-  - JavaScript compression
-  - Image compression
+A super simple flat file generator for use with Gulp. It compiles a series of HTML **pages** using a common **layout**. These pages can also include HTML **partials**, external Handlebars **helpers**, or external **data** as JSON or YAML.
+
+Panini isn't a full-fledged static site generator&mdash;rather, it solves the very specific problem of assembling flat files from common elements, using a templating language.
 
 ## Installation
 
-To use this template, your computer needs:
-
-- [NodeJS](https://nodejs.org/en/) (0.12 or greater)
-- [Git](https://git-scm.com/)
-
-This template can be installed with the Foundation CLI, or downloaded and set up manually.
-
-### Using the CLI
-
-Install the Foundation CLI with this command:
-
 ```bash
-npm install foundation-cli --global
+npm install panini --save-dev
 ```
 
-Use this command to set up a blank Foundation for Sites project with this template:
+## Usage
 
-```bash
-foundation new --framework sites --template zurb
+Feed Panini a stream of HTML files, and get a delicious flattened site out the other end.
+
+```js
+var gulp = require('gulp');
+var panini = require('panini');
+
+gulp.task('default', function() {
+  gulp.src('pages/**/*.html')
+    .pipe(panini({
+      root: 'pages/'
+      layouts: 'layouts/',
+      partials: 'partials/',
+      helpers: 'helpers/',
+      data: 'data/'
+    }))
+    .pipe(gulp.dest('build'));
+});
 ```
 
-The CLI will prompt you to give your project a name. The template will be downloaded into a folder with this name.
+Note that Panini loads layouts, partials, helpers, and data files once on first run. Whenever these files change, call `panini.refresh()` to get it up to date. You can easily do this inside a call to `gulp.watch()`:
 
-### Manual Setup
-
-To manually set up the template, first download it with Git:
-
-```bash
-git clone https://github.com/zurb/foundation-zurb-template projectname
+```js
+gulp.watch(['./src/{layouts,partials,helpers,data}/**/*'], [panini.refresh]);
 ```
 
-Then open the folder in your command line, and install the needed dependencies:
+## Options
+
+### `root`
+
+**Type:** `String`
+
+Path to the root folder all pages live in. This option does not pull in the files themselves for processing&mdash;that's what `gulp.src()` is for. This setting tells Panini what the common root of your site's pages is.
+
+### `layouts`
+
+**Type:** `String`
+
+Path to a folder containing layouts. Layout files can have the extension `.html`, `.hbs`, or `.handlebars`. One layout must be named `default`. To use a layout other than the default on a specific page, override it in the Front Matter on that page.
+
+```html
+---
+layout: post
+---
+
+<!-- Uses layouts/post.html as the template -->
+```
+
+All layouts have a special Handlebars partial called `body` which contains the contents of the page.
+
+```html
+<!-- Header up here -->
+{{> body}}
+<!-- Footer down here -->
+```
+
+### `pageLayouts`
+
+**Type:** `Object`
+
+A list of presets for page layouts, grouped by folder. This allows you to automatically set all pages within a certain folder to have the same layout.
+
+```js
+panini({
+  root: 'src/pages/',
+  layouts: 'src/layouts/',
+  pageLayouts: {
+    // All pages inside src/pages/blog will use the blog.html layout
+    'blog': 'blog'
+  }
+})
+```
+
+### `partials`
+
+**Type:** `String`
+
+Path to a folder containing HTML partials. Partial files can have the extension `.html`, `.hbs`, or `.handlebars`. Each will be registered as a Handlebars partial which can be accessed using the name of the file. (The path to the file doesn't matter&mdash;only the name of the file itself is used.)
+
+```html
+<!-- Renders partials/header.html -->
+{{> header}}
+```
+
+### `helpers`
+
+**Type:** `String`
+
+Path to a folder containing Handlebars helpers. Handlebars helpers are `.js` files which export a function via `module.exports`. The name used to register the helper is the same as the name of the file.
+
+For example, a file named `markdown.js` that exports this function would add a Handlebars helper called `{{markdown}}`.
+
+```js
+var marked = require('marked');
+
+module.exports = function(text) {
+  return marked(text);
+}
+```
+
+### `data`
+
+**Type:** `String`
+
+Path to a folder containing external data, which will be passed in to every page. Data can be formatted as JSON (`.json`) or YAML (`.yml`). Within a template, the data is stored within a variable with the same name as the file it came from.
+
+Data can also be a `.js` file with a `module.exports`. The data returned by the export function will be used.
+
+Data can also be inserted into the page itself with a Front Matter template at the top of the file.
+
+Lastly, the reserved `page` variable is added to every page template as it renders. It contains the name of the page being rendered, without the extension.
+
+## Local Development
 
 ```bash
-cd projectname
+git clone https://github.com/zurb/panini
+cd panini
 npm install
-bower install
 ```
 
-Finally, run `npm start` to run Gulp. Your finished site will be created in a folder called `dist`, viewable at this URL:
-
-```
-http://localhost:8000
-```
-
-To create compressed, production-ready assets, run `npm run build`.
+Use `npm test` to run tests.
